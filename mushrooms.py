@@ -97,7 +97,7 @@ x = data.loc[:, useful]
 
 
 # removing statistically insignificant features (veil-color and gill-attachment)
-useful = ['cap-surface', 'bruises', 'gill-spacing', 'gill-size',
+useful = ['bruises', 'gill-spacing', 'gill-size',
           'stalk-root', 'stalk-surface-above-ring',
           'ring-type', 'spore-print-color', 'population']
 x = data.loc[:, useful]
@@ -109,16 +109,47 @@ result=logit_model.fit()
 print(result.summary2())
 
 #logreg on the useful data
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=.3, random_state=0)
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=.2, random_state=0)
+x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.25, random_state=1) # 0.25 x 0.8 = 0.2
 train_score_list = []
 test_score_list = []
 
+# tested using every solver available and got the same
+# weighted this way bc id rather mistakenly id a poison than an an edible
+# more cautious
 logreg = LogisticRegression(solver="liblinear", class_weight={0:.7, 1:.3})
 logreg.fit(x_train, y_train)
 y_pred = logreg.predict(x_test)
+
+
+y_pred_train = logreg.predict(x_train)
+y_pred_test = logreg.predict(x_test)
+y_pred_val = logreg.predict(x_val)
+from sklearn.metrics import accuracy_score
+print("training accuracy: " + str(accuracy_score(y_train, y_pred_train)))
+print("testing accuracy: " + str(accuracy_score(y_test, y_pred_test)))
+print("validation accuracy: " + str(accuracy_score(y_val, y_pred_val)))
+
 confusion_matrix = confusion_matrix(y_test, y_pred)
 print(confusion_matrix)
 print(classification_report(y_test, y_pred))
+print(logreg.get_params())
+
+
+# visualize conf matrix:
+
+# class_names=[0,1] # name  of classes
+# fig, ax = plt.subplots()
+# tick_marks = np.arange(len(class_names))
+# plt.xticks(tick_marks, class_names)
+# plt.yticks(tick_marks, class_names)
+# # create heatmap
+# sns.heatmap(pd.DataFrame(confusion_matrix), annot=True, cmap="YlGnBu" ,fmt='g')
+# ax.xaxis.set_label_position("top")
+# plt.tight_layout()
+# plt.title('Confusion matrix', y=1.1)
+# plt.ylabel('Actual label')
+# plt.xlabel('Predicted label')
 
 """
 using test size = .2 and random state = 0 
@@ -131,7 +162,7 @@ gives us confusion matrix of
  BUT! only 12 FP
  
  and an accuracy report of:
-              precision    recall  f1-score   support
+              precision   recall  f1-score   support
 
         P 0     0.94      0.99      0.97      1166
         E 1     0.99      0.95      0.97      1272
