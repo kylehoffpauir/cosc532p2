@@ -6,6 +6,15 @@ from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
+from sklearn.feature_selection import RFE
+from sklearn.linear_model import LogisticRegression
+import statsmodels.api as sm
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve
+
+
 
 """     
     1. cap-shape:                bell=b,conical=c,convex=x,flat=f,
@@ -43,6 +52,7 @@ from sklearn.metrics import accuracy_score
     22. habitat:                  grasses=g,leaves=l,meadows=m,paths=p,
                                   urban=u,waste=w,woods=d
 """
+# names of all the columns
 colNames = ["edibility","cap-shape", "cap-surface", "cap-color", "bruises", "odor",
             "gill-attachment", "gill-spacing", "gill-size", "gill-color",
             "stalk-shape", "stalk-root", "stalk-surface-above-ring",
@@ -50,14 +60,115 @@ colNames = ["edibility","cap-shape", "cap-surface", "cap-color", "bruises", "odo
             "veil-type", "veil-color", "ring-number","ring-type", "spore-print-color",
             "population", "habitat"]
 
+# read in the data (nominal converted to interval)
 data = pd.read_csv('shrooms_modded.csv', sep=",", header=None)
 data.columns = colNames
-for i in data.index:
-    if data.at[i, 'edibility'] == "p":
-        data.at[i, 'edibility'] = 0
-    else:
-        data.at[i, 'edibility'] = 1
-#data = pd.DataFrame('shrooms.data', columns=colNames)
-print(data)
-sns.pairplot(data, hue="edibility")
+#print(data)
+
+data_crosstab = pd.crosstab(data['edibility'],
+                            data["ring-number"],
+                            margins = False)
+print(data_crosstab)
+
+y=['edibility']
+
+
+# y holds whether or not the mushroom is poisonous
+y = data.iloc[:, 0].values
+# x holds everything else
+x = data.iloc[:, 1:].values
+
+rfe = RFE(LogisticRegression(solver="liblinear"))
+rfe = rfe.fit(x, y)
+print(rfe.support_)
+print(rfe.ranking_)
+# columns rfe finds useful
+useful = ['cap-surface', 'bruises',
+          'gill-attachment', 'gill-spacing', 'gill-size',
+          'stalk-root', 'stalk-surface-above-ring',
+          'veil-color', 'ring-type', 'spore-print-color', 'population']
+x = data.loc[:, useful]
+
+
+# use the statsmodel to identify statistically insignificant features ( P < 0.05 ) and delete them
+# logit_model=sm.Logit(y,x)
+# result=logit_model.fit()
+# print(result.summary2())
+
+
+# removing statistically insignificant features (veil-color and gill-attachment)
+useful = ['cap-surface', 'bruises', 'gill-spacing', 'gill-size',
+          'stalk-root', 'stalk-surface-above-ring',
+          'ring-type', 'spore-print-color', 'population']
+x = data.loc[:, useful]
+# by deleting these two features that are statistically insignificant, we actually do not change accuracy at all.
+
+
+logit_model=sm.Logit(y,x)
+result=logit_model.fit()
+print(result.summary2())
+
+#logreg on the useful data
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=.3, random_state=0)
+train_score_list = []
+test_score_list = []
+
+logreg = LogisticRegression(solver="liblinear", class_weight={0:.7, 1:.3})
+logreg.fit(x_train, y_train)
+y_pred = logreg.predict(x_test)
+confusion_matrix = confusion_matrix(y_test, y_pred)
+print(confusion_matrix)
+print(classification_report(y_test, y_pred))
+
+"""
+using test size = .2 and random state = 0 
+gives us confusion matrix of
+  True+   False+
+  [1154     12]
+  [ 68    1204]
+ False-    True-
+ so we have 2358 correct predictions and 90 incorrect
+ BUT! only 12 FP
+ 
+ and an accuracy report of:
+              precision    recall  f1-score   support
+
+        P 0     0.94      0.99      0.97      1166
+        E 1     0.99      0.95      0.97      1272
+
+    accuracy                        0.97      2438
+   macro avg    0.97      0.97      0.97      2438
+weighted avg    0.97      0.97      0.97      2438
+
+
+precision: tp / (tp+fp) -- the ratio of not creating a false positive
+recall: tp / (tp+fn) -- how well the classifier finds all the positives
+f1-score: "weighted harmonic mean of precision and recall" -- 0 bad, 1 good.
+support: number of occurance of a p or e in y_test
+ 
+ We have a 99% precision for identifying if a mushroom is edible!
+"""
+
+logit_roc_auc = roc_auc_score(y_test, logreg.predict(x_test))
+fpr, tpr, thresholds = roc_curve(y_test, logreg.predict_proba(x_test)[:,1])
+plt.figure()
+plt.plot(fpr, tpr, label='Logistic Regression (area = %0.2f)' % logit_roc_auc)
+plt.plot([0, 1], [0, 1],'r--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver operating characteristic')
+plt.legend(loc="lower right")
+plt.savefig('Log_ROC')
+plt.show()
+
+importances = pd.DataFrame(data={
+    'Attribute': x_train.columns,
+    'Importance': logreg.coef_[0]
+})
+importances = importances.sort_values(by='Importance', ascending=False)
+plt.bar(x=importances['Attribute'], height=importances['Importance'], color='#087E8B')
+plt.title('Feature importances obtained from coefficients', size=20)
+plt.xticks(rotation='vertical')
 plt.show()

@@ -28,7 +28,7 @@ x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=.20, random_
 k_range = np.arange(1,20)
 train_score_list = []
 test_score_list = []
-"""
+
 for k in k_range:
     knn = KNeighborsClassifier(n_neighbors=k)
     knn.fit(x_train,y_train)
@@ -42,7 +42,7 @@ plt.xlabel("Value of k of KNN")
 plt.ylabel("Accuracy")
 plt.legend()
 plt.show()
-"""
+
 
 knn = KNeighborsClassifier(n_neighbors=3)
 knn.fit(x_train,y_train)
