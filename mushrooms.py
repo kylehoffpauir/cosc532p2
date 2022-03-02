@@ -125,7 +125,7 @@ y_pred = logreg.predict(x_test)
 y_pred_train = logreg.predict(x_train)
 y_pred_test = logreg.predict(x_test)
 y_pred_val = logreg.predict(x_val)
-from sklearn.metrics import accuracy_score
+
 print("training accuracy: " + str(accuracy_score(y_train, y_pred_train)))
 print("testing accuracy: " + str(accuracy_score(y_test, y_pred_test)))
 print("validation accuracy: " + str(accuracy_score(y_val, y_pred_val)))
@@ -138,38 +138,39 @@ print(logreg.get_params())
 
 # visualize conf matrix:
 
-# class_names=[0,1] # name  of classes
-# fig, ax = plt.subplots()
-# tick_marks = np.arange(len(class_names))
-# plt.xticks(tick_marks, class_names)
-# plt.yticks(tick_marks, class_names)
-# # create heatmap
-# sns.heatmap(pd.DataFrame(confusion_matrix), annot=True, cmap="YlGnBu" ,fmt='g')
-# ax.xaxis.set_label_position("top")
-# plt.tight_layout()
-# plt.title('Confusion matrix', y=1.1)
-# plt.ylabel('Actual label')
-# plt.xlabel('Predicted label')
+class_names=[0,1] # name  of classes
+fig, ax = plt.subplots()
+tick_marks = np.arange(len(class_names))
+plt.xticks(tick_marks, class_names)
+plt.yticks(tick_marks, class_names)
+# create heatmap
+sns.heatmap(pd.DataFrame(confusion_matrix), annot=True, cmap="YlGnBu" ,fmt='g')
+ax.xaxis.set_label_position("top")
+plt.tight_layout()
+plt.title('Confusion matrix', y=1.1)
+plt.ylabel('Actual label')
+plt.xlabel('Predicted label')
 
 """
 using test size = .2 and random state = 0 
 gives us confusion matrix of
   True+   False+
-  [1154     12]
-  [ 68    1204]
+    [[773   0]
+     [ 58 794]]
+
  False-    True-
  so we have 2358 correct predictions and 90 incorrect
  BUT! only 12 FP
  
  and an accuracy report of:
-              precision   recall  f1-score   support
+              precision    recall  f1-score   support
 
-        P 0     0.94      0.99      0.97      1166
-        E 1     0.99      0.95      0.97      1272
+           0       0.93      1.00      0.96       773
+           1       1.00      0.93      0.96       852
 
-    accuracy                        0.97      2438
-   macro avg    0.97      0.97      0.97      2438
-weighted avg    0.97      0.97      0.97      2438
+    accuracy                           0.96      1625
+   macro avg       0.97      0.97      0.96      1625
+weighted avg       0.97      0.96      0.96      1625
 
 
 precision: tp / (tp+fp) -- the ratio of not creating a false positive
@@ -201,5 +202,5 @@ importances = pd.DataFrame(data={
 importances = importances.sort_values(by='Importance', ascending=False)
 plt.bar(x=importances['Attribute'], height=importances['Importance'], color='#087E8B')
 plt.title('Feature importances obtained from coefficients', size=20)
-plt.xticks(rotation='vertical')
+plt.xticks(rotation='20')
 plt.show()
